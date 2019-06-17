@@ -55,12 +55,20 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 
     // Build HTTP response and store it in response
 
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+	body = "<h1>Hello, world!</h1>";
+	int len = strlen(body);
+
+	sprintf(response, "HTTP/1.1 200 OK\n"
+			"Content-Type: text/html\n"
+			"Content-Length: %d\n"
+			"Connection: close\n"
+			"\n"
+			"%s",
+			len, body);
 
     // Send it all!
-    int rv = send(fd, response, response_length, 0);
+    // int rv = send(fd, response, response_length, 0);
+    int rv = send(fd, response, strlen(response), 0);
 
     if (rv < 0) {
         perror("send");
