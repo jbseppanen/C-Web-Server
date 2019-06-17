@@ -54,19 +54,16 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
     char response[max_response_size];
 
     // Build HTTP response and store it in response
-
-
     sprintf(response, "%s\n"
                       "Content-Type: %s\n"
                       "Content-Length: %d\n"
                       "Connection: close\n"
                       "\n"
-                      "%s",
+                      "%s\n",
             header, content_type, content_length, body);
-    printf("%s\n", response);
+    // printf("%s\n", response);
 
     // Send it all!
-    // int rv = send(fd, response, response_length, 0);
     int rv = send(fd, response, strlen(response), 0);
 
     if (rv < 0)
@@ -83,14 +80,13 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 void get_d20(int fd)
 {
     // Generate a random number between 1 and 20 inclusive
-    // int rndm_num = rand() % 20 + 1;
-
-    char *rndm_num = "19";
+    int rndm_num = rand() % 20 + 1;
+    char body[sizeof(int)];
+    sprintf(body, "%d\n", rndm_num);
 
     // Use send_response() to send it back as text/plain data
     char *mime_type = "text/plain data";
-    send_response(fd, "HTTP/1.1 200 OK", mime_type, rndm_num, strlen(rndm_num));
-    printf("Here!\n");
+    send_response(fd, "HTTP/1.1 200 OK", mime_type, body, strlen(body));
 }
 
 /**
@@ -163,8 +159,8 @@ void handle_http_request(int fd, struct cache *cache)
     char method[200];
     char request_path[8192];
     sscanf(request, "%s %s", method, request_path);
-    printf("method: %s\n", method); // GET
-    printf("path: %s\n", request_path);
+    // printf("method: %s\n", method); // GET
+    // printf("path: %s\n", request_path);
 
     // Read the first two components of the first line of the request
 
