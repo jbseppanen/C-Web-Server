@@ -54,17 +54,22 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
     char response[max_response_size];
 
     // Build HTTP response and store it in response
-    sprintf(response, "%s\n"
-                      "Content-Type: %s\n"
-                      "Content-Length: %d\n"
-                      "Connection: close\n"
-                      "\n"
-                      "%s\n",
-            header, content_type, content_length, body);
-    // printf("%s\n", response);
+    int response_length = sprintf(response, "%s\n"
+                                            "Content-Type: %s\n"
+                                            "Content-Length: %d\n"
+                                            "Connection: close\n"
+                                            "\n",
+                                  header, content_type, content_length);
 
     // Send it all!
-    int rv = send(fd, response, strlen(response), 0);
+    int rv = send(fd, response, response_length, 0);
+
+    if (rv < 0)
+    {
+        perror("send");
+    }
+
+    rv = send(fd, body, content_length, 0);
 
     if (rv < 0)
     {
@@ -82,11 +87,11 @@ void get_d20(int fd)
     // Generate a random number between 1 and 20 inclusive
     int rndm_num = rand() % 20 + 1;
     char body[sizeof(int)];
-    sprintf(body, "%d\n", rndm_num);
+    int response_length = sprintf(body, "%d\n", rndm_num);
 
     // Use send_response() to send it back as text/plain data
     char *mime_type = "text/plain data";
-    send_response(fd, "HTTP/1.1 200 OK", mime_type, body, strlen(body));
+    send_response(fd, "HTTP/1.1 200 OK", mime_type, body, response_length);
 }
 
 /**
@@ -99,21 +104,21 @@ void resp_404(int fd)
     char *mime_type;
 
     // Fetch the 404.html file
-    snprintf(filepath, sizeof filepath, "%s/404.html", SERVER_FILES);
+    snprintf(filepath, sizeof filepath, "%s/40.html", SERVER_FILES);
     filedata = file_load(filepath);
 
     if (filedata == NULL)
     {
-        // TODO: make this non-fatal
+        mime_type = "text/plain data";
         fprintf(stderr, "cannot find system 404 file\n");
-        exit(3);
+        send_response(fd, "HTTP/1.1 404 Not Found", mime_type, "404 Not Found", 13);
     }
-
-    mime_type = mime_type_get(filepath);
-
-    send_response(fd, "HTTP/1.1 404 NOT FOUND", mime_type, filedata->data, filedata->size);
-
-    file_free(filedata);
+    else
+    {
+        mime_type = mime_type_get(filepath);
+        send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+        file_free(filedata);
+    }
 }
 
 /**
@@ -121,9 +126,30 @@ void resp_404(int fd)
  */
 void get_file(int fd, struct cache *cache, char *request_path)
 {
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    char filepath[4096];
+    struct file_data *filedata;
+    char *mime_type;
+
+    //Check if file is in cache
+    struct cache_entry *c = cache_get(cache, request_path);
+    if (c!=NULL)
+    {
+       filedata = c->content;
+    } else {
+    snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
+    filedata = file_load(filepath);
+    }
+    if (filedata == NULL)
+    {
+        fprintf(stderr, "Cannot find file\n");
+        resp_404(fd);
+    }
+    else
+    {
+        mime_type = mime_type_get(filepath);
+        send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+        file_free(filedata);
+    }
 }
 
 /**
@@ -137,6 +163,8 @@ char *find_start_of_body(char *header)
     ///////////////////
     // IMPLEMENT ME! // (Stretch)
     ///////////////////
+    (void)header;
+    return NULL;
 }
 
 /**
@@ -175,7 +203,9 @@ void handle_http_request(int fd, struct cache *cache)
         {
             get_file(fd, cache, request_path); // Otherwise serve the requested file by calling get_file()
         }
-    } else {
+    }
+    else
+    {
         resp_404(fd);
     }
     // (Stretch) If POST, handle the post request
@@ -189,7 +219,7 @@ int main(void)
     int newfd;                          // listen on sock_fd, new connection on newfd
     struct sockaddr_storage their_addr; // connector's address information
     char s[INET6_ADDRSTRLEN];
-
+    srand(time(NULL));
     struct cache *cache = cache_create(10, 0);
 
     // Get a listening socket
