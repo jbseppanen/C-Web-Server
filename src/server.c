@@ -129,15 +129,23 @@ void get_file(int fd, struct cache *cache, char *request_path)
     char filepath[4096];
     struct file_data *filedata;
     char *mime_type;
+    mime_type = mime_type_get(filepath);
 
     //Check if file is in cache
     struct cache_entry *c = cache_get(cache, request_path);
-    if (c!=NULL)
+    if (c != NULL)
     {
-       filedata = c->content;
-    } else {
-    snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
-    filedata = file_load(filepath);
+        printf("Using cache\n");
+        filedata =  malloc(c->content_length);
+        filedata->data = c->content;
+        filedata->size = c->content_length;
+    }
+    else
+    {
+        printf("Using file\n");
+        snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
+        filedata = file_load(filepath);
+        // cache_put(cache, request_path, mime_type, filedata->data, filedata->size);
     }
     if (filedata == NULL)
     {
@@ -146,7 +154,6 @@ void get_file(int fd, struct cache *cache, char *request_path)
     }
     else
     {
-        mime_type = mime_type_get(filepath);
         send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
         file_free(filedata);
     }
