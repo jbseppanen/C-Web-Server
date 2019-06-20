@@ -10,8 +10,10 @@
 struct cache_entry *alloc_entry(char *path, char *content_type, void *content, int content_length)
 {
     struct cache_entry *e = malloc(sizeof(struct cache_entry));
+    e->path = malloc(strlen(path) + 1);
     e->path = strdup(path);
     e->content_type = strdup(content_type);
+    e->content_type = malloc(strlen(content_type) + 1);
     e->content = malloc(content_length);
     memcpy(e->content, content, content_length);
     e->content_length = content_length;
@@ -23,6 +25,8 @@ struct cache_entry *alloc_entry(char *path, char *content_type, void *content, i
  */
 void free_entry(struct cache_entry *entry)
 {
+    free(entry->path);
+    free(entry->content_type);
     free(entry->content);
     free(entry);
 }
@@ -101,7 +105,7 @@ struct cache *cache_create(int max_size, int hashsize)
 {
     struct cache *c = malloc(sizeof(struct cache));
     (void)hashsize;
-    c->index = hashtable_create(max_size, NULL);
+    c->index = hashtable_create(hashsize, NULL);
     c->max_size = max_size;
     c->cur_size = 0;
     c->head = NULL;
@@ -137,9 +141,12 @@ void cache_free(struct cache *cache)
 void cache_put(struct cache *cache, char *path, char *content_type, void *content, int content_length)
 {
     struct cache_entry *e = alloc_entry(path, content_type, content, content_length);
+    hashtable_put(cache->index, path, e);
     if (cache->cur_size >= cache->max_size)
     {
-        dllist_remove_tail(cache);
+        struct cache_entry *oe = dllist_remove_tail(cache);
+        hashtable_delete(cache->index, oe->path);
+        free_entry(oe);
     }
     cache->cur_size++;
 
@@ -151,14 +158,14 @@ void cache_put(struct cache *cache, char *path, char *content_type, void *conten
  */
 struct cache_entry *cache_get(struct cache *cache, char *path)
 {
-    struct cache_entry *e = cache->head;
-    while (e != NULL)
+    struct cache_entry *e = hashtable_get(cache->index, path);
+
+    if (e == NULL)
     {
-        if (strcmp(e->path, path) == 0)
-        {
-            return e;
-        }
-        e = e->next;
+        return NULL;
     }
-    return NULL;
+
+    dllist_move_to_head(cache, e);
+    
+    return e;
 }
