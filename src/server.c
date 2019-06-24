@@ -193,9 +193,6 @@ void handle_http_request(int fd, struct cache *cache)
     char method[200];
     char request_path[8192];
     sscanf(request, "%s %s", method, request_path);
-    // printf("method: %s\n", method); // GET
-    // printf("path: %s\n", request_path);
-
     // Read the first two components of the first line of the request
 
     // If GET, handle the get endpoints
