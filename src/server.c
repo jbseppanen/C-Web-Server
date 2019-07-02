@@ -200,7 +200,7 @@ void handle_http_request(int fd, struct cache *cache)
     {
         if (strcmp(request_path, "/d20") == 0)
         {
-            get_d20(fd); //Check if it's /d20 and handle that special case
+            get_d20(fd); //Check if it's /d20 and handle that special case.
         }
         else
         {
@@ -211,7 +211,7 @@ void handle_http_request(int fd, struct cache *cache)
     {
         resp_404(fd);
     }
-    // (Stretch) If POST, handle the post request
+    // If POST, handle the post request
 }
 
 /**
